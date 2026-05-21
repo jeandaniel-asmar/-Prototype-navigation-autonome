@@ -26,13 +26,12 @@ const byte LED_VERTE = 5;
 // --- VARIABLES DE LISSAGE (Pour calmer le moteur) ---
 long totalDistance = 0;
 int moyenneDistance = 0;
-const int nbLectures = 5; // On fait la moyenne sur 5 mesures
+const int nbLectures = 5; // On fait la moyenne sur 5 mesures rapides à la suite (nbLectures = 5).
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(9600); //Serial.begin(9600) : Ouvre le canal de communication pour lire les données sur l'ordinateur
   monVolant.attach(11);
-  pinMode(TRIG, OUTPUT);
-  pinMode(ECHO, INPUT);
+  pinMode(TRIG, OUTPUT); //pinMode(...) : Définit si chaque broche doit envoyer du courant ou écouter un signal
   pinMode(PIN_PIETON, INPUT);
   pinMode(BUZZER, OUTPUT);
   pinMode(LED_ROUGE, OUTPUT);
@@ -53,20 +52,24 @@ void loop() {
     delay(10); // Petite pause entre les lectures
   }
   
-  // Calcul de la distance moyenne en cm
-  moyenneDistance = (totalDistance / nbLectures / 2.0) * (340.0 / 10000.0);
+  // Calcul de la distance moyenne en cm du capteur de distance ultrasons
+  // 340.0/10000.0, conversion directement du temps (en ms) en distance (cm).
+  moyenneDistance = (totalDistance / nbLectures / 2.0) * (340.0 / 10000.0);// diviser par 2 car le son a fait un aller-retour 
 
-  // --- 2. LOGIQUE DE DÉCISION AMÉLIORÉE ---
+  // 2. LOGIQUE DE DÉCISION AMÉLIORÉE 
+  //utilisation de la fonction digitalRead pour lecture et communication avec arduino pour savoir s'il faut agir ou non
 
-  if (digitalRead(PIN_PIETON) == HIGH) {
+  if (digitalRead(PIN_PIETON) == HIGH)  //digitalRead(PIN_PIETON) == HIGH) permet de savoir si le détecteur de mouvement thermique a déclenché une alerte.
+  {
     // URGENCE PIÉTON
-    digitalWrite(LED_ROUGE, HIGH);
+    digitalWrite(LED_ROUGE, HIGH); // digitalwrite fonction pour l'action => Elle envoie un ordre
+    // tone indispensable pour la régulation du buzzer, plus la fréquence est élevée, plus le son est aigu.
     tone(BUZZER, 2000);
-    monVolant.write(90);
+    monVolant.write(90); //braquage du volant en cas d'extreme urgence (piéton détecter)
     Serial.println("URGENCE : PIETON DETECTE"); 
   } 
   else {
-    noTone(BUZZER);
+    noTone(BUZZER); // pas de danger donc buzzer inutile
 
     // ZONE VERTE : Sécurité totale (> 50 cm)
     // On a monté le seuil pour que le Jaune serve vraiment à quelque chose
@@ -74,27 +77,30 @@ void loop() {
       digitalWrite(LED_VERTE, HIGH);
       digitalWrite(LED_JAUNE, LOW);
       digitalWrite(LED_ROUGE, LOW);
-      monVolant.write(90); // Initialisation : Roues droites
+      monVolant.write(90); // Initialisation : Roues droites volant a 90 degres
     } 
     
     // ZONE JAUNE : Approche (Entre 25 cm et 60 cm)
     // Ici, le volant commence à tourner doucement
-    else if (moyenneDistance <= 50 && moyenneDistance > 20) {
+    else if (moyenneDistance <= 50 && moyenneDistance > 20) 
+    {
       digitalWrite(LED_VERTE, LOW);
       digitalWrite(LED_JAUNE, HIGH);
       digitalWrite(LED_ROUGE, LOW);
       
       // La direction devient fluide et proportionnelle
       int angle = map(moyenneDistance, 20, 50, 45, 90);
-      monVolant.write(angle);
+      monVolant.write(angle); // initialisation et braquage selon la situation
     } 
     
     // ZONE ROUGE : Danger (< 25 cm)
-    else {
+    else 
+    {
       digitalWrite(LED_VERTE, LOW);
       digitalWrite(LED_JAUNE, LOW);
-      // --- NOUVELLE LOGIQUE : BIP PERMANENT SI TRÈS PROCHE ---
-      if (moyenneDistance <= 3) {
+      // ajout du BIP PERMANENT SI TRÈS PROCHE
+      if (moyenneDistance <= 3) 
+      {
         // LIGNE AJOUTÉE : À 3cm ou moins, on ne clignote plus
         digitalWrite(LED_ROUGE, HIGH); // LED fixe
         tone(BUZZER, 2000);            // Son continu (pas de noTone)
@@ -111,7 +117,7 @@ void loop() {
       delay(bipVitesse);
       }
       
-      monVolant.write(20); // Braquage fort du servo moteur
+      monVolant.write(20); // Braquage fort du servo moteur en cas de danger immédiat
     }
   }
 
